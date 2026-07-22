@@ -28,7 +28,7 @@ npm run scan -- /path/to/project --brief
 | Area | Examples |
 |------|----------|
 | Secrets-shaped content | AWS-like keys, private key blocks, `service_role` **assignments**, common API key assignments |
-| Browser / JS hazards | `eval(`, `new Function`, `document.write`, `postMessage(..., '*')` |
+| Browser / JS hazards | dynamic code execution APIs, `document.write`, `postMessage` with wildcard origin |
 | HTML | Missing CSP meta (heuristic), `http://` script src |
 | Repo hygiene | `.env` / `.env.local` present (path only — does not print secrets) |
 
