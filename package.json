@@ -1,0 +1,19 @@
+{
+  "name": "secgate",
+  "version": "0.1.0",
+  "description": "Local security hygiene scanner — findings and recs, not a pen test",
+  "type": "module",
+  "scripts": {
+    "scan": "node scripts/secgate-scan.mjs",
+    "test": "node --test tests/scan.test.mjs",
+    "verify": "node scripts/verify-workspace.mjs --level=all"
+  },
+  "bin": {
+    "secgate-scan": "./scripts/secgate-scan.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
