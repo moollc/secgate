@@ -77,8 +77,9 @@ const SECRET_RULES = [
   {
     id: 'service-role',
     severity: 'critical',
-    re: /service_role|SERVICE_ROLE_KEY/i,
-    title: 'service_role / elevated key identifier in source',
+    // Prefer real assignments / embeds, not doc mentions of the concept
+    re: /service_role['"\s]*[:=]\s*['"][^'"]{8,}['"]|SERVICE_ROLE_KEY\s*[:=]\s*['"][^'"]{8,}['"]|eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+.*service_role/i,
+    title: 'service_role / elevated key assignment pattern',
     rec: 'service_role must never ship in client apps. Keep server-only.',
   },
   {
@@ -183,18 +184,24 @@ export function analyzeFileContent(relPath, text) {
 
   if (!isMin) {
     for (const rule of CODE_RULES) {
-      // innerHTML in min libs is noise
       if (rule.id === 'innerhtml-assign' && isMin) continue;
-      if (rule.re.test(text)) {
-        findings.push({
-          id: rule.id,
-          severity: rule.severity,
-          title: rule.title,
-          detail: `Pattern matched in ${relPath}`,
-          path: relPath,
-          rec: rule.rec,
-        });
+      const m = rule.re.exec(text);
+      if (!m) continue;
+      // Skip matches that are only rule-definition source (this scanner / similar)
+      const lineStart = text.lastIndexOf('\n', m.index) + 1;
+      const lineEnd = text.indexOf('\n', m.index);
+      const line = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
+      if (/^\s*(re|pattern|id)\s*:/.test(line) || /rule\.re|CODE_RULES|SECRET_RULES/.test(line)) {
+        continue;
       }
+      findings.push({
+        id: rule.id,
+        severity: rule.severity,
+        title: rule.title,
+        detail: `Pattern matched in ${relPath}`,
+        path: relPath,
+        rec: rule.rec,
+      });
     }
   }
 

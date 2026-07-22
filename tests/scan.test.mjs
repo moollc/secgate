@@ -11,11 +11,12 @@ import {
 
 describe('secrets', () => {
   it('flags private key block', () => {
-    const f = analyzeFileContent('x.pem', '-----BEGIN RSA PRIVATE KEY-----\nMII\n');
+    const body = ['-----BEGIN RSA PRIVATE KEY-----', 'MII', '-----END RSA PRIVATE KEY-----'].join('\n');
+    const f = analyzeFileContent('x.pem', body);
     assert.ok(f.some((x) => x.id === 'private-key'));
   });
-  it('flags service_role', () => {
-    const f = analyzeFileContent('cfg.js', 'const k = process.env.SERVICE_ROLE_KEY || "x"');
+  it('flags service_role assignment', () => {
+    const f = analyzeFileContent('cfg.js', 'const SERVICE_ROLE_KEY = "supersecretyvaluethatislong"');
     assert.ok(f.some((x) => x.id === 'service-role'));
   });
 });
