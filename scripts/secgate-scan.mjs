@@ -22,9 +22,10 @@ const includeTests = args.includes('--include-tests');
 const rootArg = args.find((a) => !a.startsWith('--'));
 const root = resolve(rootArg || process.cwd());
 
-const MAX_FILES = 400;
-const MAX_BYTES = 400_000;
-const MAX_DEPTH = 8;
+const MAX_FILES = 500;
+/** Large monoliths (e.g. mBT index.html ~0.9MB) still need pattern scan */
+const MAX_BYTES = 1_500_000;
+const MAX_DEPTH = 10;
 
 if (!existsSync(root) || !statSync(root).isDirectory()) {
   console.error(`secgate: not a directory: ${root}`);

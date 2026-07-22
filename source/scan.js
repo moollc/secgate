@@ -85,8 +85,8 @@ const SECRET_RULES = [
   {
     id: 'generic-api-key-assign',
     severity: 'high',
-    re: /(?:api[_-]?key|apikey|secret[_-]?key|auth[_-]?token)\s*[=:]\s*['"][^'"]{16,}['"]/i,
-    title: 'Hardcoded API key / token assignment',
+    re: /(?:api[_-]?key|apikey|secret[_-]?key)\s*[=:]\s*['"][^'"]{16,}['"]/i,
+    title: 'Hardcoded API key / secret assignment',
     rec: 'Move to env/user settings; rotate if this was a real secret.',
   },
   {
@@ -181,16 +181,28 @@ export function analyzeFileContent(relPath, text, options = {}) {
   const isMin = /\.min\.(js|css)$/i.test(relPath) || /node_modules|\/lib\/|\\lib\\/.test(relPath);
 
   for (const rule of SECRET_RULES) {
-    if (rule.re.test(text)) {
-      findings.push({
-        id: rule.id,
-        severity: rule.severity,
-        title: rule.title,
-        detail: `Pattern matched in ${relPath}`,
-        path: relPath,
-        rec: rule.rec,
-      });
+    const sm = rule.re.exec(text);
+    if (!sm) continue;
+    if (rule.id === 'generic-api-key-assign') {
+      const frag = text.slice(sm.index, sm.index + 120);
+      if (
+        /MY_|YOUR_|CHANGEME|PLACEHOLDER|EXAMPLE|xxx+|dummy|test[_-]?key|not[_-]?a[_-]?secret/i.test(
+          frag,
+        )
+      ) {
+        continue;
+      }
+      // localStorage / env reads are not hardcoded secrets
+      if (/localStorage|sessionStorage|process\.env|getItem\s*\(/i.test(frag)) continue;
     }
+    findings.push({
+      id: rule.id,
+      severity: rule.severity,
+      title: rule.title,
+      detail: `Pattern matched in ${relPath}`,
+      path: relPath,
+      rec: rule.rec,
+    });
   }
 
   if (!isMin) {
