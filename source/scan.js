@@ -202,7 +202,10 @@ export function analyzeFileContent(relPath, text, options = {}) {
       const lineStart = text.lastIndexOf('\n', m.index) + 1;
       const lineEnd = text.indexOf('\n', m.index);
       const line = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd);
-      if (/^\s*(re|pattern|id)\s*:/.test(line) || /rule\.re|CODE_RULES|SECRET_RULES/.test(line)) {
+      if (
+        /^\s*(re|pattern|id|title|detail|rec)\s*:/.test(line) ||
+        /rule\.re|CODE_RULES|SECRET_RULES/.test(line)
+      ) {
         continue;
       }
       findings.push({
