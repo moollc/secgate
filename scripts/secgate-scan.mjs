@@ -80,24 +80,43 @@ function walk(dir, depth) {
 
 walk(root, 0);
 
-/** @type {Set<string>|null} */
-let trackedPaths = null;
-if (existsSync(join(root, '.git'))) {
-  const r = spawnSync('git', ['ls-files', '-z'], {
-    cwd: root,
-    encoding: 'buffer',
-    maxBuffer: 20 * 1024 * 1024,
-  });
-  if (r.status === 0 && r.stdout) {
-    trackedPaths = new Set(
-      r.stdout
-        .toString('utf8')
-        .split('\0')
-        .filter(Boolean)
-        .map((p) => p.replace(/\\/g, '/')),
-    );
+/**
+ * Find git root (scan target may be a subfolder of the repo, e.g. onboardin/).
+ * trackedPaths keys are relative to **scan root**, not git root.
+ * @returns {Set<string>|null}
+ */
+function loadTrackedPathsRelativeToScanRoot(scanRoot) {
+  let dir = scanRoot;
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, '.git'))) {
+      const r = spawnSync('git', ['ls-files', '-z'], {
+        cwd: dir,
+        encoding: 'buffer',
+        maxBuffer: 20 * 1024 * 1024,
+      });
+      if (r.status !== 0 || !r.stdout) return new Set();
+      const gitRoot = dir;
+      const relPrefix = relative(gitRoot, scanRoot).replace(/\\/g, '/');
+      const prefix = relPrefix && relPrefix !== '.' ? relPrefix + '/' : '';
+      const set = new Set();
+      for (const gp of r.stdout.toString('utf8').split('\0').filter(Boolean)) {
+        const g = gp.replace(/\\/g, '/');
+        if (!prefix) {
+          set.add(g);
+        } else if (g.startsWith(prefix)) {
+          set.add(g.slice(prefix.length));
+        }
+      }
+      return set;
+    }
+    const parent = resolve(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
   }
+  return null;
 }
+
+const trackedPaths = loadTrackedPathsRelativeToScanRoot(root);
 
 const report = analyzeProject({
   rootName: basename(root),
