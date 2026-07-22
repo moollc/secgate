@@ -12,12 +12,16 @@ import {
 describe('secrets', () => {
   it('flags private key block', () => {
     const body = ['-----BEGIN RSA PRIVATE KEY-----', 'MII', '-----END RSA PRIVATE KEY-----'].join('\n');
-    const f = analyzeFileContent('x.pem', body);
+    const f = analyzeFileContent('keys/x.pem', body);
     assert.ok(f.some((x) => x.id === 'private-key'));
   });
   it('flags service_role assignment', () => {
     const f = analyzeFileContent('cfg.js', 'const SERVICE_ROLE_KEY = "supersecretyvaluethatislong"');
     assert.ok(f.some((x) => x.id === 'service-role'));
+  });
+  it('skips test paths by default', () => {
+    const f = analyzeFileContent('tests/evil.test.mjs', 'eval(user)');
+    assert.equal(f.length, 0);
   });
 });
 

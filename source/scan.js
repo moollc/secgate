@@ -161,10 +161,21 @@ export function isProbablyTextFile(filePath) {
  * @param {string} text
  * @returns {Finding[]}
  */
-export function analyzeFileContent(relPath, text) {
+/** Test fixtures intentionally contain bad patterns — skip by default */
+export function isTestPath(relPath) {
+  const p = relPath.replace(/\\/g, '/');
+  return (
+    /(^|\/)tests?\//i.test(p) ||
+    /(^|\/)__tests__\//i.test(p) ||
+    /\.(test|spec)\.(js|mjs|cjs|ts|tsx)$/i.test(p)
+  );
+}
+
+export function analyzeFileContent(relPath, text, options = {}) {
   /** @type {Finding[]} */
   const findings = [];
   if (!text || typeof text !== 'string') return findings;
+  if (!options.includeTests && isTestPath(relPath)) return findings;
 
   // skip minified vendor noise for some rules
   const isMin = /\.min\.(js|css)$/i.test(relPath) || /node_modules|\/lib\/|\\lib\\/.test(relPath);
@@ -295,9 +306,10 @@ export function analyzeProject(input) {
   /** @type {Finding[]} */
   let findings = [...analyzePaths(paths)];
 
+  const includeTests = Boolean(input.includeTests);
   for (const [rel, text] of Object.entries(files)) {
     if (text == null) continue;
-    findings = findings.concat(analyzeFileContent(rel, text));
+    findings = findings.concat(analyzeFileContent(rel, text, { includeTests }));
   }
 
   // dedupe by id+path

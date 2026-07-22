@@ -18,6 +18,7 @@ import {
 const args = process.argv.slice(2);
 const json = args.includes('--json');
 const briefOnly = args.includes('--brief');
+const includeTests = args.includes('--include-tests');
 const rootArg = args.find((a) => !a.startsWith('--'));
 const root = resolve(rootArg || process.cwd());
 
@@ -81,6 +82,7 @@ const report = analyzeProject({
   rootName: basename(root),
   files,
   paths: allPaths.length ? allPaths : Object.keys(files),
+  includeTests,
 });
 
 if (json) {
