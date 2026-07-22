@@ -37,10 +37,16 @@ describe('browser patterns', () => {
 });
 
 describe('paths', () => {
-  it('flags .env not example', () => {
-    const f = analyzePaths(['.env', 'config/.env.local', '.env.example']);
-    assert.ok(f.some((x) => x.id === 'env-file'));
+  it('flags tracked .env as critical', () => {
+    const f = analyzePaths(['.env', '.env.example'], {
+      trackedPaths: new Set(['.env']),
+    });
+    assert.ok(f.some((x) => x.id === 'env-file' && x.severity === 'critical'));
     assert.ok(f.some((x) => x.id === 'env-example'));
+  });
+  it('local untracked .env is info only', () => {
+    const f = analyzePaths(['.env.local'], { trackedPaths: new Set() });
+    assert.ok(f.some((x) => x.id === 'env-file-local' && x.severity === 'info'));
   });
 });
 

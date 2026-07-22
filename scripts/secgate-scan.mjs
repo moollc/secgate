@@ -8,6 +8,7 @@
  */
 import { readdirSync, readFileSync, statSync, existsSync } from 'fs';
 import { join, relative, resolve, basename, extname } from 'path';
+import { spawnSync } from 'child_process';
 import {
   analyzeProject,
   shouldSkipDir,
@@ -79,11 +80,31 @@ function walk(dir, depth) {
 
 walk(root, 0);
 
+/** @type {Set<string>|null} */
+let trackedPaths = null;
+if (existsSync(join(root, '.git'))) {
+  const r = spawnSync('git', ['ls-files', '-z'], {
+    cwd: root,
+    encoding: 'buffer',
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if (r.status === 0 && r.stdout) {
+    trackedPaths = new Set(
+      r.stdout
+        .toString('utf8')
+        .split('\0')
+        .filter(Boolean)
+        .map((p) => p.replace(/\\/g, '/')),
+    );
+  }
+}
+
 const report = analyzeProject({
   rootName: basename(root),
   files,
   paths: allPaths.length ? allPaths : Object.keys(files),
   includeTests,
+  trackedPaths,
 });
 
 if (json) {

@@ -179,7 +179,10 @@ export function analyzeFileContent(relPath, text, options = {}) {
   if (!options.includeTests && isTestPath(relPath)) return findings;
 
   // skip minified vendor noise for some rules
-  const isMin = /\.min\.(js|css)$/i.test(relPath) || /node_modules|\/lib\/|\\lib\\/.test(relPath);
+  const isMin =
+    /\.min\.(js|mjs|cjs|css)$/i.test(relPath) ||
+    /\.worker\.min\./i.test(relPath) ||
+    /node_modules|\/lib\/|\\lib\\/.test(relPath);
 
   for (const rule of SECRET_RULES) {
     const sm = rule.re.exec(text);
@@ -261,12 +264,14 @@ export function analyzeFileContent(relPath, text, options = {}) {
 /**
  * Path-only rules (no file body required for all).
  * @param {string[]} relPaths
+ * @param {{ trackedPaths?: Set<string> }} [options]
  * @returns {Finding[]}
  */
-export function analyzePaths(relPaths) {
+export function analyzePaths(relPaths, options = {}) {
   /** @type {Finding[]} */
   const findings = [];
   const set = new Set(relPaths.map((p) => p.replace(/\\/g, '/')));
+  const tracked = options.trackedPaths || null;
 
   for (const p of set) {
     const base = p.split('/').pop() || '';
@@ -281,14 +286,33 @@ export function analyzePaths(relPaths) {
           rec: 'Fine if no real secrets. Keep real .env out of git.',
         });
       } else {
-        findings.push({
-          id: 'env-file',
-          severity: 'high',
-          title: 'Environment file present in tree',
-          detail: p + ' (contents not printed)',
-          path: p,
-          rec: 'Ensure .env is gitignored and never committed. Rotate if it was pushed.',
-        });
+        const isTracked = tracked ? tracked.has(p) : null;
+        if (isTracked === false) {
+          // Local-only env files are normal for Vite/Node apps
+          findings.push({
+            id: 'env-file-local',
+            severity: 'info',
+            title: 'Local env file present (not tracked by git)',
+            detail: p + ' (contents not printed)',
+            path: p,
+            rec: 'OK for local dev. Keep gitignored; never commit; rotate if it was ever pushed.',
+          });
+        } else {
+          findings.push({
+            id: 'env-file',
+            severity: isTracked === true ? 'critical' : 'high',
+            title:
+              isTracked === true
+                ? 'Environment file is tracked by git'
+                : 'Environment file present in tree (git status unknown)',
+            detail: p + ' (contents not printed)',
+            path: p,
+            rec:
+              isTracked === true
+                ? 'Remove from git index (git rm --cached), ensure .gitignore, rotate secrets.'
+                : 'Ensure .env is gitignored and never committed. Rotate if it was pushed.',
+          });
+        }
       }
     }
   }
@@ -320,7 +344,7 @@ export function analyzeProject(input) {
   const { rootName, files } = input;
   const paths = input.paths || Object.keys(files);
   /** @type {Finding[]} */
-  let findings = [...analyzePaths(paths)];
+  let findings = [...analyzePaths(paths, { trackedPaths: input.trackedPaths || null })];
 
   const includeTests = Boolean(input.includeTests);
   for (const [rel, text] of Object.entries(files)) {
