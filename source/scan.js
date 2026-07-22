@@ -85,7 +85,8 @@ const SECRET_RULES = [
   {
     id: 'generic-api-key-assign',
     severity: 'high',
-    re: /(?:api[_-]?key|apikey|secret[_-]?key)\s*[=:]\s*['"][^'"]{16,}['"]/i,
+    // Quoted value only: no spaces/concat (avoids apikey=' + encodeURIComponent(...))
+    re: /(?:api[_-]?key|apikey|secret[_-]?key)\s*[=:]\s*['"][A-Za-z0-9_\-./+=]{20,}['"]/i,
     title: 'Hardcoded API key / secret assignment',
     rec: 'Move to env/user settings; rotate if this was a real secret.',
   },
